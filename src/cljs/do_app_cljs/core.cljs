@@ -4,7 +4,8 @@
    [reagent.session :as session]
    [reitit.frontend :as reitit]
    [clerk.core :as clerk]
-   [accountant.core :as accountant]))
+   [accountant.core :as accountant]
+   [do-app-cljs.myapp :as myapp]))
 
 ;; -------------------------
 ;; Routes
@@ -90,7 +91,7 @@
 ;; Initialize app
 
 (defn mount-root []
-  (reagent/render [current-page] (.getElementById js/document "app")))
+  (reagent/render [myapp/todo-app] (.getElementById js/document "app")))
 
 (defn init! []
   (clerk/initialize!)
