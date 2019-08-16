@@ -17,8 +17,8 @@
 (defn add-todo
   "Add todo item. id is obtained by incremental global counter value."
   ([text] (add-todo nil text))
-  ([parent-item text] (let [new-item-id (swap! counter inc)
-                             new-item {:id new-item-id :title text :done false :sub-items [] :is-parent (nil? parent-item)}]
+  ([parent-item text] (let [new-item-id (str "item-" (swap! counter inc))
+                            new-item {:id new-item-id :title text :done false :sub-items [] :is-parent (nil? parent-item)}]
                         (swap! todos assoc new-item-id new-item)
                         (when parent-item (swap! todos (fn [todos child]
                                                           (update-in todos [(:id parent-item) :sub-items] #(conj % new-item-id))))) 
@@ -89,18 +89,57 @@
 
 (declare todo-items)
 
+(defn item->id [item]
+  (cond (map? item) (:id item)
+        (instance? js/Object item) (if (.-getAttribute item)
+                                     (.getAttribute item "id")
+                                     (.attr (or (.-draggable item) item) "id"))))
+
+;(defn item-change-parent [state item new-parent]
+;  (let [item (if (string? item))]))
+   
+  
+(defn handle-item-dropped! [event ui]
+  (this-as this
+    (let [item-id (item->id ui)]
+      (swap! todos (fn [cur-todos]
+                     ;; TODO This vals call will be very expensive if the list is big!
+                     ;; TODO handle when dragging items between sibligns, parent items
+                     ;; may not be defined always.
+                     (let [old-parent-item (some (fn [item]
+                                                   (if (some #{item-id} (:sub-items item))
+                                                     item
+                                                     nil))
+                                                 (vals cur-todos))
+                           new-parent-id (item->id this)]
+                       (-> cur-todos
+                           ;;Remove sub-item from old parent
+                           (update-in [(item->id old-parent-item) :sub-items] (partial remove #(= item-id %))) 
+                           ;;Add item to new parent
+                           (update-in [new-parent-id :sub-items] #(conj % item-id)))))))))
+
+
+
+
+
+
+
+                   
+                                  
+                   
+
 (defn todo-item []
  "Retrufn function to render todo item"
   (r/create-class
    {:component-did-mount
     (fn [comp]
       (.draggable (js/jQuery (r/dom-node comp)))
-      (.droppable (js/jQuery (r/dom-node comp)) #js{ :drop #(.log js/console "dropped!")}))
+      (.droppable (js/jQuery (r/dom-node comp)) #js{ :drop handle-item-dropped!}))
     :reagent-render
      (fn []
        (let [editing (r/atom false)]
          (fn [{:keys [id done title sub-items]} items]
-           [:li.todo-item {:class (str (if done "completed ") (if @editing "editing"))}
+           [:li.todo-item {:id id :class (str (if done "completed ") (if @editing "editing"))}
             [:div.view
              [:input.toggle {:type "checkbox" :checked done
                              :on-change #(toggle id)}]
