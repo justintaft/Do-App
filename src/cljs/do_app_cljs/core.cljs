@@ -91,7 +91,9 @@
 ;; Initialize app
 
 (defn mount-root []
-  (reagent/render [myapp/todo-app] (.getElementById js/document "app")))
+  (reagent/render
+   [myapp/todo-app]
+   (.getElementById js/document "app")))
 
 (defn init! []
   (clerk/initialize!)

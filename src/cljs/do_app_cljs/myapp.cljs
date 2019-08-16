@@ -51,6 +51,9 @@
                                27 (stop)
                                nil)}])))
 
+
+
+
 (def todo-edit (with-meta todo-input
                  {:component-did-mount #(.focus (r/dom-node %))}))
 
@@ -74,9 +77,16 @@
 
 (defn todo-item []
  "Retrufn function to render todo item"
+  (r/create-class
+   {:component-did-mount
+    (fn [comp]
+      (.draggable (js/jQuery (r/dom-node comp)))
+      (.droppable (js/jQuery (r/dom-node comp)) #js{ :drop #(.log js/console "dropped!")}))
+
+   :reagent-render (fn []
   (let [editing (r/atom false)]
     (fn [{:keys [id done title]}]
-      [:li {:class (str (if done "completed ")
+      [:li.todo-item {:class (str (if done "completed ")
                         (if @editing "editing"))}
        [:div.view
         [:input.toggle {:type "checkbox" :checked done
@@ -86,7 +96,7 @@
        (when @editing
          [todo-edit {:class "edit" :title title
                      :on-save #(save id %)
-                     :on-stop #(reset! editing false)}])])))
+                     :on-stop #(reset! editing false)}])])))}))
 
 (defn todo-items [] 
     "Return function to render list of todo items"
@@ -124,3 +134,5 @@
 ;(defn ^:export run []
 ;  (r/render [todo-app]
 ;            (js/document.getElementById "app")))
+
+
