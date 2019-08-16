@@ -14,10 +14,18 @@
 
 (defonce counter (r/atom 0))
 
-(defn add-todo [text]
+(defn add-todo
   "Add todo item. id is obtained by incremental global counter value."
-  (let [id (swap! counter inc)]
-    (swap! todos assoc id {:id id :title text :done false})))
+  ([text] (add-todo nil text))
+  ([parent-item text] (let [new-item-id (swap! counter inc)
+                             new-item {:id new-item-id :title text :done false :sub-items [] :is-parent (nil? parent-item)}]
+                        (swap! todos assoc new-item-id new-item)
+                        (when parent-item (swap! todos (fn [todos child]
+                                                          (update-in todos [(:id parent-item) :sub-items] #(conj % new-item-id))))) 
+                        new-item)))
+                       
+
+                                               
 
 (defn toggle [id] (swap! todos update-in [id :done] not))
 (defn save [id title] (swap! todos assoc-in [id :title] title))
@@ -27,11 +35,17 @@
 (defn complete-all [v] (swap! todos mmap map #(assoc-in % [1 :done] v)))
 (defn clear-done [] (swap! todos mmap remove #(get-in % [1 :done])))
 
+
 (defonce init (do
-                (add-todo "Rename Cloact to Reagent")
-                (add-todo "Add undo demo")
-                (add-todo "Make all rendering async")
-                (add-todo "Allow any arguments to component functions")
+                (let [work (add-todo "Work")]
+                  (add-todo work "Update Website")
+                  (add-todo work "Another thing")
+                  (let [provision (add-todo work "Provision Computer")]
+                    (add-todo provision "Setup Debian")))
+                (let [home (add-todo "Home")]
+                  (add-todo home "Clean Room"))
+                (let [relationship (add-todo "Relationship")]
+                   (add-todo relationship "Birthday"))
                 (complete-all true)))
 
 (defn todo-input [{:keys [title on-save on-stop]}]
@@ -73,7 +87,7 @@
         "Clear completed " done])]))
 
 
-
+(declare todo-items)
 
 (defn todo-item []
  "Retrufn function to render todo item"
@@ -82,34 +96,39 @@
     (fn [comp]
       (.draggable (js/jQuery (r/dom-node comp)))
       (.droppable (js/jQuery (r/dom-node comp)) #js{ :drop #(.log js/console "dropped!")}))
+    :reagent-render
+     (fn []
+       (let [editing (r/atom false)]
+         (fn [{:keys [id done title sub-items]} items]
+           [:li.todo-item {:class (str (if done "completed ") (if @editing "editing"))}
+            [:div.view
+             [:input.toggle {:type "checkbox" :checked done
+                             :on-change #(toggle id)}]
+             [:label {:on-double-click #(reset! editing true)} title]
+             [:button.destroy {:on-click #(delete id)}]]
+            (when @editing
+              [todo-edit {:class "edit" :title title
+                          :on-save #(save id %)
+                          :on-stop #(reset! editing false)}])
+            (when (not (empty? sub-items))
+                [:ul [todo-items (map #(items %) sub-items) items]])])))}))
 
-   :reagent-render (fn []
-  (let [editing (r/atom false)]
-    (fn [{:keys [id done title]}]
-      [:li.todo-item {:class (str (if done "completed ")
-                        (if @editing "editing"))}
-       [:div.view
-        [:input.toggle {:type "checkbox" :checked done
-                        :on-change #(toggle id)}]
-        [:label {:on-double-click #(reset! editing true)} title]
-        [:button.destroy {:on-click #(delete id)}]]
-       (when @editing
-         [todo-edit {:class "edit" :title title
-                     :on-save #(save id %)
-                     :on-stop #(reset! editing false)}])])))}))
+         
 
 (defn todo-items [] 
     "Return function to render list of todo items"
-    (fn [items]
+    (fn [items-to-display all-items]
         [:div#items 
-            (for [todo items] ^{:key (:id todo)} [todo-item todo])]))
+            (for [todo items-to-display] ^{:key (:id todo)} [todo-item todo all-items])]))
 
 
 (defn todo-app [props]
   (let [filt (r/atom :all)]
     (fn []
-      (let [items (vals @todos)
+      (let [all-items @todos
+            items (vals all-items)
             done (->> items (filter :done) count)
+            parent-items (filter :is-parent items)
             active (- (count items) done)]
         [:div
          [:section#todoapp
@@ -124,12 +143,12 @@
               [:input#toggle-all {:type "checkbox" :checked (zero? active)
                                   :on-change #(complete-all (pos? active))}]
               [:label {:for "toggle-all"} "Mark all as complete"]
-              [:ul#todo-list [todo-items items]
+              [:ul#todo-list [todo-items parent-items all-items]]]
 
              [:footer#footer
-              [todo-stats {:active active :done done :filt filt}]]]]])
+              [todo-stats {:active active :done done :filt filt}]]])]
          [:footer#info
-          [:p "Double-click to edit a todo"]]]]))))
+          [:p "Double-click to edit a todo"]]]))))
 
 ;(defn ^:export run []
 ;  (r/render [todo-app]
