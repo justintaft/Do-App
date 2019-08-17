@@ -37,16 +37,17 @@
 
 
 (defonce init (do
-                (let [work (add-todo "Work")]
-                  (add-todo work "Update Website")
-                  (add-todo work "Another thing")
-                  (let [provision (add-todo work "Provision Computer")]
-                    (add-todo provision "Setup Debian")))
-                (let [home (add-todo "Home")]
-                  (add-todo home "Clean Room"))
-                (let [relationship (add-todo "Relationship")]
-                   (add-todo relationship "Birthday"))
-                (complete-all true)))
+                (let [root (add-todo "Root")]
+                  (let [work (add-todo root "Work")]
+                    (add-todo work "Update Website")
+                    (add-todo work "Another thing")
+                    (let [provision (add-todo work "Provision Computer")]
+                      (add-todo provision "Setup Debian")))
+                  (let [home (add-todo root "Home")]
+                    (add-todo home "Clean Room"))
+                  (let [relationship (add-todo root "Relationship")]
+                     (add-todo relationship "Birthday"))
+                  (complete-all true))))
 
 (defn todo-input [{:keys [title on-save on-stop]}]
   (let [val (r/atom title)
@@ -100,6 +101,8 @@
    
   
 (defn handle-item-dropped! [event ui]
+  ;;TODO prevent root parent item from being added to another list!
+  ;;We could get duplicate items otherwise.
   (this-as this
     (let [item-id (item->id ui)]
       (swap! todos (fn [cur-todos]
