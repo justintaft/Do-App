@@ -130,14 +130,18 @@
                    
                                   
                    
+(defn todo-component-mounted-or-updated [comp]
+      (.draggable (js/jQuery (r/dom-node comp)))
+
+      ;Greedy must be set to true to prevent drop event from firing multiple times
+      ;for nested elements.
+      (.droppable (js/jQuery (r/dom-node comp)) #js{:greedy true :drop handle-item-dropped!}))
 
 (defn todo-item []
  "Retrufn function to render todo item"
   (r/create-class
-   {:component-did-mount
-    (fn [comp]
-      (.draggable (js/jQuery (r/dom-node comp)))
-      (.droppable (js/jQuery (r/dom-node comp)) #js{ :drop handle-item-dropped!}))
+   {:component-did-mount todo-component-mounted-or-updated
+    :component-did-update todo-component-mounted-or-updated
     :reagent-render
      (fn []
        (let [editing (r/atom false)]
