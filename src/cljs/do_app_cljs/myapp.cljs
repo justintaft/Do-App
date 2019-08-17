@@ -18,7 +18,7 @@
   "Add todo item. id is obtained by incremental global counter value."
   ([text] (add-todo nil text))
   ([parent-item text] (let [new-item-id (str "item-" (swap! counter inc))
-                            new-item {:id new-item-id :title text :done false :sub-items [] :is-parent (nil? parent-item)}]
+                            new-item {:id new-item-id :title text :collapsed false :done false :sub-items [] :is-parent (nil? parent-item)}]
                         (swap! todos assoc new-item-id new-item)
                         (when parent-item (swap! todos (fn [todos child]
                                                           (update-in todos [(:id parent-item) :sub-items] #(conj % new-item-id))))) 
@@ -27,6 +27,7 @@
 
                                                
 
+(defn collapse [id] (swap! todos update-in [id :collapsed] not))
 (defn toggle [id] (swap! todos update-in [id :done] not))
 (defn save [id title] (swap! todos assoc-in [id :title] title))
 (defn delete [id] (swap! todos dissoc id))
@@ -145,9 +146,11 @@
     :reagent-render
      (fn []
        (let [editing (r/atom false)]
-         (fn [{:keys [id done title sub-items]} items]
+         (fn [{:keys [id done title sub-items collapsed]} items]
            [:li.todo-item {:id id :class (str (if done "completed ") (if @editing "editing"))}
             [:div.view
+             [:input.toggle {:type "checkbox" :collapsed done
+                             :on-change #(collapse id)}]
              [:input.toggle {:type "checkbox" :checked done
                              :on-change #(toggle id)}]
              [:label {:on-double-click #(reset! editing true)} title]
@@ -157,7 +160,7 @@
                           :on-save #(save id %)
                           :on-stop #(reset! editing false)}])
             (when (not (empty? sub-items))
-                [:ul [todo-items (map #(items %) sub-items) items]])])))}))
+                [:ul {:class (str (if collapsed "collapsed"))} [todo-items (map #(items %) sub-items) items]])])))}))
 
          
 
